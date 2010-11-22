@@ -181,7 +181,7 @@ def doping(target):
     csv_file = uri + '.csv'
 
     ploss = 100
-    pmin, pavg, pmax = 0
+    pmin, pavg, pmax = 0,0,0
     
     if windows_ping:
         pass # TODO: Need to write windows implementation.
