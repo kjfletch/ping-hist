@@ -1,0 +1,78 @@
+Provides ping logger (pinghist-record.py) and ping plotter (pinghist-plot.py).
+
+pinghist-record.py
+------------------
+
+Performs ping operations on one or more targets and records the
+results. The ideal way to run pinghist-record.py would be from a CRON
+task or some other scheduler, but pinghist-record.py provides some
+basic scheduling operations for simplicity and portability.
+
+pinghist-record.py when called will ping the defined targets and log:
+
+  + The raw output of the ping command appended to the end of the file
+    <date>_<target>.txt
+
+  + ping min, max, average and loss (%) from the command appended to
+    the end of the comma-separated-values file
+    <date>_<target>.csv
+
+Usage
+=====
+
+pinghist-record.py [options] <target> [target ...]
+  options:
+    -e <delay>
+    --every=<delay>
+      Pause for <delay> between ping loop cycles. Delay can be specified
+      in one of the following ways:
+       - timespan in format HH:MM:SS, example: 01:45:00 for an hour and 45 minutes.
+       - hours in the format <n>h, example: 11h for 11 hours.
+       - minutes in the format <n>m, example: 10m for 10 minutes.
+       - seconds in the format <n>s, example: 90s for 90 seconds. 
+
+      Default: 15 minutes (00:15:00, 15m, etc).
+
+    -f <duration>
+    --for=<duration>
+      Duration to continue the ping loop. This can be specified by:
+       - The number of cycles <n> to loop for.
+       - The keyword 'loop' to loop forever.
+       - A timespan specified in the following ways:
+         * timespan in format HH:MM:SS, example: 01:45:00 for an hour and 45 minutes.
+         * hours in the format <n>h, example: 11h for 11 hours.
+         * minutes in the format <n>m, example: 10m for 10 minutes.
+         * seconds in the format <n>s, example: 90s for 90 seconds.
+
+      Default: 1 (1 iteration of the ping loop).
+
+    -c <count>
+    --packet-count=<count>
+      Number of packets to send in each ping.
+
+      Default: 30
+
+    -q
+    --quiet
+      Turn on quiet mode. Notifications will not be written to standard out/error.
+
+    -h
+    --help
+      Display this help.
+
+    target (targets)
+      Targets to ping, example: www.bbc.co.uk.
+
+Example
+=======
+
+python pinghist-record.py --packet-count=10 --every=10m --for=24h www.google.com www.bbc.co.uk
+
+would ping both www.google.com and www.bbc.co.uk every 10 minutes for
+24 hours with 10 packets.
+
+
+pinghist-plot.py
+----------------
+
+Requires gnuplot. takes csv data from pinghist-record.py and plots it.
