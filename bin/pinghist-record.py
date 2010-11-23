@@ -2,16 +2,16 @@ from subprocess import Popen, PIPE
 from datetime import datetime
 from datetime import timedelta, datetime
 from time import sleep
-import getopt, sys, re, shlex
+import getopt, sys, re, shlex, platform
 
 ## Setup the Defaults
+quiet_mode = False
 targets = []
 packet_count = 30
 repeat_end = 1
 repeat_end_date = None
 repeat_loop = False
 repeat_freq = timedelta(0,0,0,0,15)
-windows_ping = False # TODO: need to turn this to True programatically
 span_re = re.compile('^(\d+):(\d+):(\d+)$', re.IGNORECASE)
 hms_re = re.compile('^(\d+)([hms])$', re.IGNORECASE)
 endnum_re = re.compile('^(\d+)$')
@@ -68,13 +68,17 @@ def timedelta_from_argv(argv):
 
 def parse_opts(argv):
     """Parse command line options and store values in global vars."""
-    global targets, packet_count, repeat_end, repeat_end_date, repeat_loop, repeat_freq
+    global targets, packet_count, repeat_end, repeat_end_date, repeat_loop, repeat_freq, quiet_mode
 
-    opts, targets = getopt.getopt(argv, 'he:f:c:', ['help', 'every=', 'for=', 'packet-count='])
+    opts, targets = getopt.getopt(argv, 'hqe:f:c:', ['help', 'quiet', 'every=', 'for=', 'packet-count='])
 
     for o, a in opts:
       if o in ('-h', '--help'):
           usage(2)
+          continue
+
+      if o in ('-q', '--quiet'):
+          quiet_mode = True
           continue
 
       if o in ('-e', '--every'):
@@ -156,6 +160,10 @@ def usage(retcode=None):
 
       Default: 30
 
+    -q
+    --quiet
+      Turn on quiet mode. Notifications will not be written to standard out/error.
+
     -h
     --help
       Display this help.
@@ -183,17 +191,30 @@ def doping(target):
     ploss = 100
     pmin, pavg, pmax = 0,0,0
     
-    if windows_ping:
-        pass # TODO: Need to write windows implementation.
+    system = platform.system()
+
+    if system == 'Windows':
+        ping_cmd = shlex.split('ping %s -n %d' % (target, packet_count))
+        doprint('pinging with command: %s' % (' '.join(ping_cmd)))
+        ping = Popen(ping_cmd, stdout=PIPE)
+        (content, stderr) = ping.communicate()
+        match = re.search('\((\d+)% loss\)', content)
+        if match:
+            ploss = match.group(1)
+        match = re.search('Minimum = (\d+)ms, Maximum = (\d+)ms, Average = (\d+)ms', content)
+        if match:
+            pmin, pmax, pavg = match.groups()
     else:
         ping_cmd = shlex.split('ping %s -c %d' % (target, packet_count))
-        print 'pinging with command: %s' % (' '.join(ping_cmd))
+        doprint('pinging with command: %s' % (' '.join(ping_cmd)))
         ping = Popen(ping_cmd, stdout=PIPE)
         (content, stderr) = ping.communicate()
         match = re.search('\s([0-9.]+)% packet loss', content)
-        ploss = match.group(1)
+        if match:
+            ploss = match.group(1)
         match = re.search('min/avg/max/mdev = (.+?)/(.+?)/(.+?)/.+? ms', content)
-        pmin, pavg, pmax = match.groups()
+        if match:
+            pmin, pavg, pmax = match.groups()
 
     raw = open(raw_file, 'a')
     raw.writelines('\n'.join([ping_time_string, content, '']))
@@ -202,6 +223,11 @@ def doping(target):
     csv = open(csv_file, 'a')
     csv.write(','.join([ping_time_string, pmin, pmax, pavg, ploss, '\n']))
     csv.close()
+
+def doprint(message):
+    """Print the message only if quiet_mode is not enabled."""
+    if quiet_mode == False:
+        print message
 
 if __name__ == "__main__":
     main()
