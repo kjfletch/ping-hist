@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 from subprocess import Popen, PIPE
 from datetime import datetime
 from datetime import timedelta, datetime
